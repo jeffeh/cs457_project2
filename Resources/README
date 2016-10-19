@@ -1,0 +1,10 @@
+To host the server: 
+	./chat 
+To connect as a client:
+	./chat -s ip -p port
+To get help:
+	./chat -h
+
+This was made following the tutorial on 
+
+http://www.linuxhowtos.org/C_C++/socket.htm
