@@ -16,6 +16,9 @@
 #include <signal.h>
 #include <regex>
 #include <pthread.h>
+#include <string>
+#include <utility>
+#include <vector>
 
 using namespace std;
 
@@ -27,18 +30,26 @@ void getmyip();
 void error(const string msg);
 void sig_handler(int signal);
 void Usage(char* argv);
+void *PrintHello (void *dummyPt);
 
 // Global Variables
 char* host;
 int port;
 int sockett;
 int sockett2;
+static int newSocketFileDesc;
 
 // Structures
 typedef struct packet_t{
 	short version, messageLength;
 	char message[140];
 }packet;
+
+typedef struct p_SSInfo {
+  char* url;
+  int remainingSS;
+  vector<pair<string, int>> SSList;
+};
 
 // Main Function
 int main(int argc, char* argv[]){
@@ -149,81 +160,185 @@ void getmyip(){
 // Server and Client Functions
 int server(int port){
 	int socketFileDesc;
-	int newSocketFileDesc;
+	//int newSocketFileDesc;
 
 	unsigned int sizeOfAddrClient;
 	int n;
 	char buffer[1000];
 	struct sockaddr_in serverAddress, clientAddress;
 
+  // Socket creation
 	socketFileDesc = socket(AF_INET, SOCK_STREAM, 0);
 	sockett = socketFileDesc;
 	if(socketFileDesc < 0){
 		error("could not open the socket");
 	}
+
+  // Populating serverAddress with IP info and port #
 	bzero((char *) &serverAddress, sizeof(serverAddress));
 	serverAddress.sin_port = htons(port);
 	serverAddress.sin_addr.s_addr = INADDR_ANY;
 
+  // Binding the socket
 	if(bind(socketFileDesc, (struct sockaddr *) &serverAddress, sizeof(serverAddress)) < 0){
 		error("could not bind");
 	}
+
+  // Listen to the socket
 	listen(socketFileDesc, 5);
+
 	cout << "Welcome to Chat!" << endl;
 	cout << "Waiting for connection on ";
 	getmyip();
 	cout << " port ";
 	cout << port << endl;
-	sizeOfAddrClient = sizeof(clientAddress);
-	newSocketFileDesc = accept(socketFileDesc, (struct sockaddr *) &clientAddress, &sizeOfAddrClient);
-	sockett2 = newSocketFileDesc;
-	if(newSocketFileDesc < 0){
-		error("error on acceptance");
-	}
-	cout << "Found a friend! You recieve first." << endl;
-	while(true){
-		packet_t* pac;
 
 
+  // Declare/initialize pthread array
+  pthread_t cThreads[3];
+  int threadCounter = 0;
 
-		//bzero(buffer, 1000);
+  // 4. While loop statement
+  while (threadCounter < 3){
 
-		n = recv(newSocketFileDesc, buffer, sizeof(buffer), 0);
+    // Accept clients
+    // sizeOfAddrClient is unsigned int. cplucplus example declared it to be socklen_t
+    sizeOfAddrClient = sizeof(clientAddress);
+    newSocketFileDesc = accept(socketFileDesc, (struct sockaddr *) &clientAddress, &sizeOfAddrClient);
 
-		pac = (packet_t*)buffer;
+    // Check if client was accepted
+    sockett2 = newSocketFileDesc;
+    if(newSocketFileDesc < 0){
+      error("error on acceptance");
+    }
 
-		if(n < 0){
-			error("error reading from the socket");
-		}
-		printf("Friend: %s", pac->message);
+
+    cout << "Found a friend! You recieve first." << endl;
+
+    // pthread_create
+    pthread_create(&cThreads[threadCounter], NULL, PrintHello, NULL);
+    threadCounter++;
+
+/*
+    while(true){
+      packet_t* pac;
+
+
+      //bzero(buffer, 1000);
+
+      n = recv(newSocketFileDesc, buffer, sizeof(buffer), 0);
+
+      pac = (packet_t*)buffer;
+
+      if(n < 0){
+        error("error reading from the socket");
+      }
+      printf("Friend: %s", pac->message);
 label:
-		printf("You: ");
-		//bzero(buffer,1000);
-		fgets(buffer,1000,stdin);
-		packet_t pak2 = {};
+      printf("You: ");
+      //bzero(buffer,1000);
+      fgets(buffer,1000,stdin);
+      packet_t pak2 = {};
 
-		if(strlen(buffer) > 140){
-			cout << "message too long" << endl;
-			goto label;
+      if(strlen(buffer) > 140){
+        cout << "message too long" << endl;
+        goto label;
 
-		}
+      }
 
-		strcpy(pak2.message, buffer);
-		pak2.messageLength = strlen(buffer);
-		pak2.version = 457;
+      strcpy(pak2.message, buffer);
+      pak2.messageLength = strlen(buffer);
+      pak2.version = 457;
 
-		n = send(newSocketFileDesc, (char*)&pak2, sizeof(packet_t), 0);
-
-
-		if(n<0){
-			error("couldn't write to socket");
-		}
+      n = send(newSocketFileDesc, (char*)&pak2, sizeof(packet_t), 0);
 
 
-	}
+      if(n<0){
+        error("couldn't write to socket");
+      }
+
+
+    }
+*/
+
+  } // End of first while
+
+  for (int i = 0; i < 3; i++) {
+    pthread_join(cThreads[i], NULL);
+  }
+
 
 	return 0;
 }
+
+
+//------------------- thread start routine
+
+
+void *PrintHello (void *dummyPt) {
+  cout << "Thread No: " << pthread_self() << endl;
+  //char test[300];
+  //bzero(test, 301);
+  bool loop = false;
+	char buffer[1000];
+  while(!loop){
+
+    //bzero(test, 301);
+
+
+    //read(connFd, test, 300);
+    // our code
+    packet_t* pac;
+
+
+    //bzero(buffer, 1000);
+
+    int n = recv(newSocketFileDesc, buffer, sizeof(buffer), 0);
+
+    pac = (packet_t*)buffer;
+
+    if(n < 0){
+      error("error reading from the socket");
+    }
+    printf("Friend: %s", pac->message);
+label2:
+    printf("You: ");
+    //bzero(buffer,1000);
+    fgets(buffer,1000,stdin);
+    packet_t pak2 = {};
+
+    if(strlen(buffer) > 140){
+      cout << "message too long" << endl;
+      goto label2;
+
+    }
+
+    strcpy(pak2.message, buffer);
+    pak2.messageLength = strlen(buffer);
+    pak2.version = 457;
+
+    n = send(newSocketFileDesc, (char*)&pak2, sizeof(packet_t), 0);
+
+
+    if(n<0){
+      error("couldn't write to socket");
+    }
+
+
+    //string tester (test);
+    //cout << tester << endl;
+
+    //if(tester == "exit")
+     // break;
+  }
+  cout << "\nClosing thread and conn" << endl;
+  close(newSocketFileDesc);
+}
+
+//------------------- end of thread start routine
+
+
+
 
 int client(int port, char* hn){
 	int socketFileDesc;
@@ -294,8 +409,3 @@ label:
 	}
 	return 0;
 }
-
-
-
-/
-
