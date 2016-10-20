@@ -2,7 +2,7 @@
  * Main.cpp
  *
  *  Created on: Sep 14, 2016
- *      Author: 
+ *      Author:
  */
 #include <iostream>
 #include <stdio.h>
@@ -24,6 +24,12 @@ int server(int port);
 int client(int port, char* hn);
 void getmyip();
 
+
+typedef struct p_SSInfo {
+  char* url;
+  int remainingSS;
+  vector<pair<String, int>> SSList;
+};
 
 char* host;
 int port;
@@ -160,6 +166,9 @@ int server(int port){
 
 
   listen(socketFileDesc, 5);
+
+
+  // Start loop statement here
 
   // Display message on server
   cout << "Welcome to Chat!" << endl;
