@@ -49,10 +49,21 @@ typedef struct p_SSInfo {
   char* url;
   int remainingSS;
   vector<pair<string, int>> SSList;
-};
+} SSInfo;
 
 // Main Function
 int main(int argc, char* argv[]){
+
+  /*
+  SSInfo stuff;
+  stuff.remainingSS = 10;
+  cout << "remaining ss is : " << stuff.remainingSS << endl;
+  vector<pair<string, int>> wsup = stuff.SSList;
+  if (wsup.empty()) {
+    cout << "is vector empty " << endl;
+  }
+  */
+
 
 	if(signal(SIGINT,sig_handler)==SIG_ERR){
 		printf("can't signal");
@@ -215,51 +226,44 @@ int server(int port){
 
     cout << "Found a friend! You recieve first." << endl;
 
+    // **************Testing recv of struct p_SSInfo and unpacking
+
+    SSInfo* testingSS;
+
+    //bzero(buffer, 1000);
+
+    int n = recv(newSocketFileDesc, buffer, sizeof(buffer), 0);
+
+    //pac = (packet_t*)buffer;
+    testingSS = (SSInfo *)buffer;
+
+    // Checks for recv socket error
+    if(n < 0){
+      error("error reading from the socket");
+    }
+
+    // Test printing structure SSInfo
+    /*
+    typedef struct p_SSInfo {
+      char* url;
+      int remainingSS;
+      vector<pair<string, int>> SSList;
+    } SSInfo;
+    */
+
+    cout << "url is: " << testingSS->url << endl;
+    cout << "# of remaing stones = " << testingSS->remainingSS << endl;
+    cout << "SS list size is = " << testingSS->SSList.size() << endl;
+
+    cout << "Finished unpacking" << endl;
+
+    // ******************
+
     // pthread_create
+    cout << "Starting creation of thread" << endl;
     pthread_create(&cThreads[threadCounter], NULL, PrintHello, NULL);
     threadCounter++;
 
-/*
-    while(true){
-      packet_t* pac;
-
-
-      //bzero(buffer, 1000);
-
-      n = recv(newSocketFileDesc, buffer, sizeof(buffer), 0);
-
-      pac = (packet_t*)buffer;
-
-      if(n < 0){
-        error("error reading from the socket");
-      }
-      printf("Friend: %s", pac->message);
-label:
-      printf("You: ");
-      //bzero(buffer,1000);
-      fgets(buffer,1000,stdin);
-      packet_t pak2 = {};
-
-      if(strlen(buffer) > 140){
-        cout << "message too long" << endl;
-        goto label;
-
-      }
-
-      strcpy(pak2.message, buffer);
-      pak2.messageLength = strlen(buffer);
-      pak2.version = 457;
-
-      n = send(newSocketFileDesc, (char*)&pak2, sizeof(packet_t), 0);
-
-
-      if(n<0){
-        error("couldn't write to socket");
-      }
-
-
-    }
-*/
 
   } // End of first while
 
@@ -288,19 +292,9 @@ void *PrintHello (void *dummyPt) {
 
     //read(connFd, test, 300);
     // our code
-    packet_t* pac;
+    //packet_t* pac;
 
-
-    //bzero(buffer, 1000);
-
-    int n = recv(newSocketFileDesc, buffer, sizeof(buffer), 0);
-
-    pac = (packet_t*)buffer;
-
-    if(n < 0){
-      error("error reading from the socket");
-    }
-    printf("Friend: %s", pac->message);
+    //printf("Friend: %s", pac->message);
 label2:
     printf("You: ");
     //bzero(buffer,1000);
@@ -317,7 +311,7 @@ label2:
     pak2.messageLength = strlen(buffer);
     pak2.version = 457;
 
-    n = send(newSocketFileDesc, (char*)&pak2, sizeof(packet_t), 0);
+    int n = send(newSocketFileDesc, (char*)&pak2, sizeof(packet_t), 0);
 
 
     if(n<0){
