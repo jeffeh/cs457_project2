@@ -29,7 +29,6 @@ void getmyip();
 void error(const string msg);
 void sig_handler(int signal);
 void Usage(char* argv);
-void *PrintHello (void *dummyPt);
 
 vector<pair<string, int>> convertStringToList(char* Stones);
 string convertListToString(vector<pair<string, int>> Stones);
@@ -53,23 +52,23 @@ typedef struct packet_t{
 }packet;
 
 typedef struct p_SSInfo {
-  char url[1000];
-  int remainingSS;
-  char SSList[1000];
+	char url[1000];
+	int remainingSS;
+	char SSList[1000];
 } SSInfo;
 
 // Main Function
 int main(int argc, char* argv[]){
 
-  /*
-  SSInfo stuff;
-  stuff.remainingSS = 10;
-  cout << "remaining ss is : " << stuff.remainingSS << endl;
-  vector<pair<string, int>> wsup = stuff.SSList;
-  if (wsup.empty()) {
-    cout << "is vector empty " << endl;
-  }
-  */
+	/*
+	   SSInfo stuff;
+	   stuff.remainingSS = 10;
+	   cout << "remaining ss is : " << stuff.remainingSS << endl;
+	   vector<pair<string, int>> wsup = stuff.SSList;
+	   if (wsup.empty()) {
+	   cout << "is vector empty " << endl;
+	   }
+	   */
 
 
 	if(signal(SIGINT,sig_handler)==SIG_ERR){
@@ -81,12 +80,12 @@ int main(int argc, char* argv[]){
 	}
 	switch(argc){
 		case 1:
-			server(6676);break;
+			server(20000);break;
 		case 2:
 			Usage(argv[0]); break;
 		default:
 			//client(port, host);
-      cout << "default" << endl;
+			cout << "default" << endl;
 	}
 
 	//cout << checkArgs(argc, argv) << endl;
@@ -186,24 +185,24 @@ int server(int port){
 	char buffer[4000];
 	struct sockaddr_in serverAddress, clientAddress;
 
-  // Socket creation
+	// Socket creation
 	socketFileDesc = socket(AF_INET, SOCK_STREAM, 0);
 	sockett = socketFileDesc;
 	if(socketFileDesc < 0){
 		error("could not open the socket");
 	}
 
-  // Populating serverAddress with IP info and port #
+	// Populating serverAddress with IP info and port #
 	bzero((char *) &serverAddress, sizeof(serverAddress));
 	serverAddress.sin_port = htons(port);
 	serverAddress.sin_addr.s_addr = INADDR_ANY;
 
-  // Binding the socket
+	// Binding the socket
 	if(bind(socketFileDesc, (struct sockaddr *) &serverAddress, sizeof(serverAddress)) < 0){
 		error("could not bind");
 	}
 
-  // Listen to the socket
+	// Listen to the socket
 	listen(socketFileDesc, 5);
 
 	cout << "Welcome to Chat!" << endl;
@@ -213,68 +212,68 @@ int server(int port){
 	cout << port << endl;
 
 
-  // Declare/initialize pthread array
-  pthread_t cThreads[3];
-  int threadCounter = 0;
+	// Declare/initialize pthread array
+	pthread_t cThreads[3];
+	int threadCounter = 0;
 
-  // 4. While loop statement
-  while (threadCounter < 3){
+	// 4. While loop statement
+	while (threadCounter < 3){
 
-    // Accept clients
-    // sizeOfAddrClient is unsigned int. cplucplus example declared it to be socklen_t
-    sizeOfAddrClient = sizeof(clientAddress);
-    newSocketFileDesc = accept(socketFileDesc, (struct sockaddr *) &clientAddress, &sizeOfAddrClient);
+		// Accept clients
+		// sizeOfAddrClient is unsigned int. cplucplus example declared it to be socklen_t
+		sizeOfAddrClient = sizeof(clientAddress);
+		newSocketFileDesc = accept(socketFileDesc, (struct sockaddr *) &clientAddress, &sizeOfAddrClient);
 
-    // Check if client was accepted
-    sockett2 = newSocketFileDesc;
-    if(newSocketFileDesc < 0){
-      error("error on acceptance");
-    }
-
-
-    cout << "Found a friend! You recieve first." << endl;
-
-    // **************Testing recv of struct p_SSInfo and unpacking
-
-    SSInfo* testingSS = (SSInfo*)malloc(sizeof(SSInfo));
-
-    //bzero(buffer, 1000);
-
-    int n = recv(newSocketFileDesc, buffer, sizeof(buffer), 0);
-
-    //pac = (packet_t*)buffer;
-    //testingSS = (SSInfo *)buffer;
-    memcpy(testingSS, buffer, sizeof(p_SSInfo));
-    cout << endl;
-    cout << "testingSS remaining stepping stones: " << testingSS->remainingSS << endl;
-    cout << endl;
-
-    // Checks for recv socket error
-    if(n < 0){
-      error("error reading from the socket");
-    }
+		// Check if client was accepted
+		sockett2 = newSocketFileDesc;
+		if(newSocketFileDesc < 0){
+			error("error on acceptance");
+		}
 
 
-    // sanity check to see if structure is correct
+		cout << "Found a friend! You recieve first." << endl;
+
+		// **************Testing recv of struct p_SSInfo and unpacking
+
+		SSInfo* testingSS = (SSInfo*)malloc(sizeof(SSInfo));
+
+		//bzero(buffer, 1000);
+
+		int n = recv(newSocketFileDesc, buffer, sizeof(buffer), 0);
+
+		//pac = (packet_t*)buffer;
+		//testingSS = (SSInfo *)buffer;
+		memcpy(testingSS, buffer, sizeof(p_SSInfo));
+		cout << endl;
+		cout << "testingSS remaining stepping stones: " << testingSS->remainingSS << endl;
+		cout << endl;
+
+		// Checks for recv socket error
+		if(n < 0){
+			error("error reading from the socket");
+		}
+
+
+		// sanity check to see if structure is correct
 		printf("Url recieved: %s\n", testingSS->url);
 		printf("Chainlist recieved:\n");
-    // end of structure check
+		// end of structure check
 
-    // ******************
+		// ******************
 
-    // pthread_create
-    cout << "Starting creation of thread" << endl;
-    pthread_create(&cThreads[threadCounter], NULL, unpackForNextSteppingStoneConnection, (void *)testingSS);
-    threadCounter++;
+		// pthread_create
+		cout << "Starting creation of thread" << endl;
+		pthread_create(&cThreads[threadCounter], NULL, unpackForNextSteppingStoneConnection, (void *)testingSS);
+		threadCounter++;
 
 
-  } // End of first while
+	} // End of first while
 
-  cout << "Threading part completed" << endl;
+	cout << "Threading part completed" << endl;
 
-  for (int i = 0; i < 3; i++) {
-    pthread_join(cThreads[i], NULL);
-  }
+	for (int i = 0; i < 3; i++) {
+		pthread_join(cThreads[i], NULL);
+	}
 
 
 	return 0;
@@ -282,37 +281,37 @@ int server(int port){
 
 // ----- creating a new thread start routine
 void *unpackForNextSteppingStoneConnection(void *SSInfoArg) {
-  cout << "Thread No: " << pthread_self() << endl;
+	cout << "Thread No: " << pthread_self() << endl;
 
-  SSInfo *ss_data;
+	SSInfo *ss_data;
 
-  ss_data = (SSInfo *)SSInfoArg;
+	ss_data = (SSInfo *)SSInfoArg;
 
-  cout << "UUUUUUUUUUUUUUUUURL is : " << ss_data->url << endl;
-  cout << "REMAINING STONNNNNNES  : " << ss_data->remainingSS << endl;
+	cout << "UUUUUUUUUUUUUUUUURL is : " << ss_data->url << endl;
+	cout << "REMAINING STONNNNNNES  : " << ss_data->remainingSS << endl;
 
 
-  // Convert ss info list to vector<pair< ip address, port>>
-  vector<pair<string, int>> listr = convertStringToList(ss_data->SSList);
-  //cout << "SIZE OFFFFFFFFFF : " << listr.size() << endl;
+	// Convert ss info list to vector<pair< ip address, port>>
+	vector<pair<string, int>> listr = convertStringToList(ss_data->SSList);
+	//cout << "SIZE OFFFFFFFFFF : " << listr.size() << endl;
 
-  if(!listr.empty()){
-    // print out remaining stone lists
-    for(pair<string, int> i:listr){
-      cout << "IP: " << i.first << ", Port:" << i.second << endl;
-    }
-    cout << "reached end of for loop unpacknext" << endl;
-    // remove the randomly chosen stone from list
-    pair<string, int> next = popRandom(listr);
-    cout << "reached end of poprandom" << endl;
-    // connect to the randomly chosen stone
-    cconnect(next.second, const_cast<char*>(next.first.c_str()), ss_data->url, listr);
-  }
-  else{
-    cout << "this is the end, no chainlist" << endl;
-    cout << "calling wget" << endl;
-    wget(ss_data->url);
-  }
+	if(!listr.empty()){
+		// print out remaining stone lists
+		for(pair<string, int> i:listr){
+			cout << "IP: " << i.first << ", Port:" << i.second << endl;
+		}
+		cout << "reached end of for loop unpacknext" << endl;
+		// remove the randomly chosen stone from list
+		pair<string, int> next = popRandom(listr);
+		cout << "reached end of poprandom" << endl;
+		// connect to the randomly chosen stone
+		cconnect(next.second, const_cast<char*>(next.first.c_str()), ss_data->url, listr);
+	}
+	else{
+		cout << "this is the end, no chainlist" << endl;
+		cout << "calling wget" << endl;
+		wget(ss_data->url);
+	}
 
 
 
@@ -320,65 +319,6 @@ void *unpackForNextSteppingStoneConnection(void *SSInfoArg) {
 }
 
 // ----- ending new thread routine
-
-//------------------- thread start routine
-
-
-void *PrintHello (void *dummyPt) {
-  cout << "Thread No: " << pthread_self() << endl;
-  //char test[300];
-  //bzero(test, 301);
-  bool loop = false;
-	char buffer[1000];
-  while(!loop){
-
-    //bzero(test, 301);
-
-
-    //read(connFd, test, 300);
-    // our code
-    //packet_t* pac;
-
-    //printf("Friend: %s", pac->message);
-label2:
-    printf("You: ");
-    //bzero(buffer,1000);
-    fgets(buffer,1000,stdin);
-    packet_t pak2 = {};
-
-    if(strlen(buffer) > 140){
-      cout << "message too long" << endl;
-      goto label2;
-
-    }
-
-    strcpy(pak2.message, buffer);
-    pak2.messageLength = strlen(buffer);
-    pak2.version = 457;
-
-    int n = send(newSocketFileDesc, (char*)&pak2, sizeof(packet_t), 0);
-
-
-    if(n<0){
-      error("couldn't write to socket");
-    }
-
-
-    //string tester (test);
-    //cout << tester << endl;
-
-    //if(tester == "exit")
-     // break;
-  }
-  cout << "\nClosing thread and conn" << endl;
-  close(newSocketFileDesc);
-}
-
-//------------------- end of thread start routine
-
-
-
-
 
 
 vector<pair<string, int>> convertStringToList(char* Stones){
@@ -398,33 +338,34 @@ vector<pair<string, int>> convertStringToList(char* Stones){
 string convertListToString(vector<pair<string, int>> Stones){
 	string i = "";
 	i+=std::to_string(Stones.size());
-  cout << "convertListToString before for loop and stone size is : " << Stones.size() << endl;
+	cout << "convertListToString before for loop and stone size is : " << Stones.size() << endl;
 	i+="\n";
 	for(pair<string, int> p:Stones){
 		i+=p.first;
 		i+= " ";
 		i+=std::to_string(p.second);
 		i+="\n";
-  cout << "convertListToString ip is : " << p.first << " and port is : " << p.second << endl;
+		cout << "convertListToString ip is : " << p.first << " and port is : " << p.second << endl;
 	}
-  cout << "convertListToString end of for loop" << endl;
+	cout << "convertListToString end of for loop" << endl;
+	return i;
 }
 
 
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
-    std::stringstream ss;
-    ss.str(s);
-    std::string item;
-    while (std::getline(ss, item, delim)) {
-        elems.push_back(item);
-    }
+	std::stringstream ss;
+	ss.str(s);
+	std::string item;
+	while (std::getline(ss, item, delim)) {
+		elems.push_back(item);
+	}
 }
 
 
 std::vector<std::string> split(const std::string &s, char delim) {
-    std::vector<std::string> elems;
-    split(s, delim, elems);
-    return elems;
+	std::vector<std::string> elems;
+	split(s, delim, elems);
+	return elems;
 }
 
 
@@ -432,65 +373,53 @@ std::vector<std::string> split(const std::string &s, char delim) {
 void cconnect(int port, char* hn, char* url, vector<pair<string, int>> ss){
 	int socketFileDesc;
 
-		int n;
-		struct sockaddr_in serverAddress;
-		struct hostent *server;
-		char buffer[4000];
+	int n;
+	struct sockaddr_in serverAddress;
+	struct hostent *server;
+	char buffer[4000];
 
-		socketFileDesc = socket(AF_INET, SOCK_STREAM, 0);
-		sockett = socketFileDesc;
-		if(socketFileDesc < 0){
-			perror("couldn't open the socket");
-			exit(0);
-		}
-		server = gethostbyname(hn);
-		if(server == NULL){
-			perror("error no host");
-			exit(0);
-		}
-		bzero((char *) &serverAddress, sizeof(serverAddress));
-		serverAddress.sin_family = AF_INET;
-		bcopy((char*)server->h_addr, (char*)&serverAddress.sin_addr.s_addr, server->h_length);
-		serverAddress.sin_port = htons(port);
-		cout << "Connecting to server... ";
-		if(connect(socketFileDesc, (sockaddr *)&serverAddress, sizeof(serverAddress)) < 0){
-			perror("couldn't connect");
-		}
-		cout << "Connected!" << endl;
+	socketFileDesc = socket(AF_INET, SOCK_STREAM, 0);
+	sockett = socketFileDesc;
+	if(socketFileDesc < 0){
+		perror("couldn't open the socket");
+		exit(0);
+	}
+	server = gethostbyname(hn);
+	if(server == NULL){
+		perror("error no host");
+		exit(0);
+	}
+	bzero((char *) &serverAddress, sizeof(serverAddress));
+	serverAddress.sin_family = AF_INET;
+	bcopy((char*)server->h_addr, (char*)&serverAddress.sin_addr.s_addr, server->h_length);
+	serverAddress.sin_port = htons(port);
 
-		//while(true){
-			SSInfo* pak = (SSInfo*)malloc(sizeof(SSInfo));
+	cout << "Connecting to server... ";
+	if(connect(socketFileDesc, (sockaddr *)&serverAddress, sizeof(serverAddress)) < 0){
+		perror("couldn't connect");
+	}
+	cout << "Connected!" << endl;
+	SSInfo* pak = (SSInfo*)malloc(sizeof(SSInfo));
 
-		  strcpy(pak->url, url);
+	strcpy(pak->url, url);
+	pak->remainingSS = ss.size();
+	char tos[1000];
+	cout << convertListToString(ss)<<endl;
+	string stringzz = convertListToString(ss).c_str();
+	strcpy(pak->SSList, convertListToString(ss).c_str());
 
-		  pak->remainingSS = ss.size();
-		  char tos[1000];
-		  cout << convertListToString(ss)<<endl;
- 		  strcpy(pak->SSList, convertListToString(ss).c_str());
- 		  //pak->SSList = tos;
-		memcpy(buffer, pak, sizeof(p_SSInfo));
+	memcpy(buffer, pak, sizeof(p_SSInfo));
 
-		SSInfo* pakk = (p_SSInfo*)buffer;
+	SSInfo* pakk = (p_SSInfo*)buffer;
 
-		cout << "Sending url" << endl;
-		n = send(socketFileDesc, buffer, sizeof(buffer), 0);
+	cout << "Sending url" << endl;
+	cout << "The url is: " << pakk -> url << endl;
+	n = send(socketFileDesc, buffer, sizeof(buffer), 0);
 
-		if(n < 0){
-			perror("error writing to socket");
-		}
-		//bzero(buffer, 4000);
-//		packet_t* pak2;
-//		n = recv(socketFileDesc, buffer, 4000, 0);
-//		pak2 = (packet_t*)buffer;
-//
-//		if (n < 0){
-//			error("error reading from socket");
-//		}
-//
-//		printf("Friend: %s", pak2->message);
-//
-		free(pak);
-		//}
+	if(n < 0){
+	perror("error writing to socket");
+	}
+	free(pak);
 }
 
 
@@ -499,7 +428,7 @@ void wget(char* arg){
 	std::string w = "wget -q ";
 	std::string g = arg;
 	std::string l = w.append(g);
-
+	
 	system(l.c_str());
 
 }
