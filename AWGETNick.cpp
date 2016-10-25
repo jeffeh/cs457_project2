@@ -30,87 +30,92 @@ inline bool fileExists(const std::string& name) {
 }
 void merror(const string msg);
 pair<string, int> popRandom(vector<pair<string, int>>& Stones);
-
+void error(const string msg);
 
 
 typedef struct p_SSInfo {
 	char url[1000];
 	int remainingSS;
 	char SSList[1000];
-	//vector<pair<string, int>> SSList;
 } SSInfo;
+
+typedef struct p_File {
+	int seqNum;
+	char Data[1400];
+} FilePac;
+typedef struct filePacket {
+	char mes[1200];
+}FILEInfo;
 
 string convertListToString(vector<pair<string, int>> Stones);
 int sockett;
-void cconnect(int port, char* hn, char* url, vector<pair<string, int>> ss){
+int connectToServer(char* hostname, int port){
 	int socketFileDesc;
+	struct sockaddr_in serverAddress;
+	struct hostent *server;
+	socketFileDesc = socket(AF_INET, SOCK_STREAM, 0);
+	sockett = socketFileDesc;
+	if(socketFileDesc < 0){
+		perror("couldn't open the socket");
+		exit(0);
+	}
+	server = gethostbyname(hostname);
+	if(server == NULL){
+		perror("error no host");
+		exit(0);
+	}
+	bzero((char *) &serverAddress, sizeof(serverAddress));
+	serverAddress.sin_family = AF_INET;
+	bcopy((char*)server->h_addr, (char*)&serverAddress.sin_addr.s_addr, server->h_length);
+	serverAddress.sin_port = htons(port);
+	cout << "Connecting to server... ";
+	if(connect(socketFileDesc, (sockaddr *)&serverAddress, sizeof(serverAddress)) < 0){
+		error("couldn't connect");
+	}
+	cout << "Connected!" << endl;
+	return socketFileDesc;
+}
+void sendMessage(int fileDesc, SSInfo* pak){
+	char buffer[4000];
+	memcpy(buffer, pak, sizeof(p_SSInfo));
+	int n;
+	n = send(fileDesc, buffer, sizeof(buffer), 0);
+	if(n < 0){
+		error("error writing to socket");
+	}
+}
+filePacket* recievePacket(int socketFileDesc, filePacket* OfType){
+	int n = 0;
+	char buffer[1200];
+	n = recv(socketFileDesc, buffer, sizeof(buffer), 0);
 
-		int n;
-		struct sockaddr_in serverAddress;
-		struct hostent *server;
-		char buffer[4000];
-
-		socketFileDesc = socket(AF_INET, SOCK_STREAM, 0);
-		sockett = socketFileDesc;
-		if(socketFileDesc < 0){
-			perror("couldn't open the socket");
-			exit(0);
-		}
-		server = gethostbyname(hn);
-		if(server == NULL){
-			perror("error no host");
-			exit(0);
-		}
-		bzero((char *) &serverAddress, sizeof(serverAddress));
-		serverAddress.sin_family = AF_INET;
-		bcopy((char*)server->h_addr, (char*)&serverAddress.sin_addr.s_addr, server->h_length);
-		serverAddress.sin_port = htons(port);
-		cout << "Connecting to server... ";
-		if(connect(socketFileDesc, (sockaddr *)&serverAddress, sizeof(serverAddress)) < 0){
-			perror("couldn't connect");
-		}
-		cout << "Connected!" << endl;
-
-		//while(true){
-			SSInfo* pak = (SSInfo*)malloc(sizeof(SSInfo));
+	filePacket* pac = (filePacket*) buffer;
+	if(n<0){
+		error("error reading from the socket");
+	}
+	return pac;
+}
+void recieveFile(int fileDesc);
+int cconnect(int port, char* hn, char* url, vector<pair<string, int>> ss){
+	int socketFileDesc = connectToServer(hn, port);
 
 
+	SSInfo* pak = (SSInfo*)malloc(sizeof(SSInfo));
 
-		  strcpy(pak->url, url);
+	strcpy(pak->url, url);
+	pak->remainingSS = ss.size();
+	strcpy(pak->SSList, convertListToString(ss).c_str());
 
-		  pak->remainingSS = ss.size();
-		  char tos[1000];
-		  cout << convertListToString(ss)<<endl;
-		  strcpy(pak->SSList, convertListToString(ss).c_str());
-		  //pak->SSList = tos;
-		memcpy(buffer, pak, sizeof(p_SSInfo));
+	sendMessage(socketFileDesc, pak);
+	recieveFile(socketFileDesc);
 
-		SSInfo* pakk = (p_SSInfo*)buffer;
-
-		cout << "Sending url" << endl;
-		n = send(socketFileDesc, buffer, sizeof(buffer), 0);
-
-		if(n < 0){
-			perror("error writing to socket");
-		}
-		//bzero(buffer, 4000);
-//		packet_t* pak2;
-//		n = recv(socketFileDesc, buffer, 4000, 0);
-//		pak2 = (packet_t*)buffer;
-//
-//		if (n < 0){
-//			error("error reading from socket");
-//		}
-//
-//		printf("Friend: %s", pak2->message);
-//
-		free(pak);
-		//}
+	free(pak);
+	return socketFileDesc;
 }
 
 int main(int argc, char* arv[]){
 	pair<const char*, const char*> a = handleArgs(argc, arv);
-	//wget("https://www.cs.colostate.edu/~cs457/yr2016sp/more_assignments/proj2.html");
+
 	if(fileExists(a.second)==false){
 		string m = "File ";
 		string o = a.second;
@@ -119,14 +124,12 @@ int main(int argc, char* arv[]){
 	}
 
 	vector<pair<string, int>> s = readChainFile(const_cast<char *>(a.second));
-//	for(pair<string, int> t:s){
-//		cout << "f: " << t.first << endl;
-//	}
+
 	pair<string, int>firstStone = popRandom(s);
 	cout << "Stepping stone to connect to: " << firstStone.first << " on port: " << firstStone.second << endl;
 	cconnect(firstStone.second, const_cast<char *>(firstStone.first.c_str()),const_cast<char *>(a.first), s);
 
-	//begin connection
+
 }
 
 
@@ -361,11 +364,32 @@ vector<pair<string, int>> convertStringToList(char* Stones){
 }
 
 
+void sendAck(int fileDesc){
+	char a[4] = "ack";
+	int n = send(fileDesc, a, sizeof(a), 0);
+	if(n < 0){
+		perror("error on ack");
+	}
+}
 
+void recieveFile(int fileDesc){
+	bool end = false;
+	FILE * out = fopen("Out.html", "a");
+	int counter = 0;
+	while(!end){
 
-
-
-
+		filePacket* p;
+		p = recievePacket(fileDesc, p);
+		cout << "recieving" << endl;
+		//cout << p->last << endl;
+		sendAck(fileDesc);
+		cout << p->mes << endl;
+		counter ++;
+		cout << counter<<endl;
+	}
+	cout << "ending" << endl;
+	fclose(out);
+}
 
 
 
