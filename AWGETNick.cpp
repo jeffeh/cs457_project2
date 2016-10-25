@@ -19,15 +19,20 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <string>
+
 using namespace std;
+
 void wget(char* arg);
 void removeF(const char* arg);
+
 vector<pair<string, int>> readChainFile(char* filee);
 pair<const char*, const char*> handleArgs(int argc, char* argv[]);
 std::string basename(std::string const& pathname);
+
 inline bool fileExists(const std::string& name) {
     return ( access( name.c_str(), F_OK ) != -1 );
 }
+
 void merror(const string msg);
 pair<string, int> popRandom(vector<pair<string, int>>& Stones);
 
@@ -42,6 +47,7 @@ typedef struct p_SSInfo {
 
 string convertListToString(vector<pair<string, int>> Stones);
 int sockett;
+
 void cconnect(int port, char* hn, char* url, vector<pair<string, int>> ss){
 	int socketFileDesc;
 
@@ -70,8 +76,8 @@ void cconnect(int port, char* hn, char* url, vector<pair<string, int>> ss){
 			perror("couldn't connect");
 		}
 		cout << "Connected!" << endl;
+		cout << "hostname is: " << gethostbyname(hn) << endl;
 
-		//while(true){
 			SSInfo* pak = (SSInfo*)malloc(sizeof(SSInfo));
 
 
@@ -80,7 +86,7 @@ void cconnect(int port, char* hn, char* url, vector<pair<string, int>> ss){
 
 		  pak->remainingSS = ss.size();
 		  char tos[1000];
-		  cout << convertListToString(ss)<<endl;
+		  //cout << convertListToString(ss)<<endl;
 		  strcpy(pak->SSList, convertListToString(ss).c_str());
 		  //pak->SSList = tos;
 		memcpy(buffer, pak, sizeof(p_SSInfo));
@@ -93,19 +99,8 @@ void cconnect(int port, char* hn, char* url, vector<pair<string, int>> ss){
 		if(n < 0){
 			perror("error writing to socket");
 		}
-		//bzero(buffer, 4000);
-//		packet_t* pak2;
-//		n = recv(socketFileDesc, buffer, 4000, 0);
-//		pak2 = (packet_t*)buffer;
-//
-//		if (n < 0){
-//			error("error reading from socket");
-//		}
-//
-//		printf("Friend: %s", pak2->message);
-//
+
 		free(pak);
-		//}
 }
 
 int main(int argc, char* arv[]){
@@ -119,31 +114,12 @@ int main(int argc, char* arv[]){
 	}
 
 	vector<pair<string, int>> s = readChainFile(const_cast<char *>(a.second));
-//	for(pair<string, int> t:s){
-//		cout << "f: " << t.first << endl;
-//	}
 	pair<string, int>firstStone = popRandom(s);
-	cout << "Stepping stone to connect to: " << firstStone.first << " on port: " << firstStone.second << endl;
+	cout << "Connecting to stepping stone: " << firstStone.first << " on port: " << firstStone.second << endl;
 	cconnect(firstStone.second, const_cast<char *>(firstStone.first.c_str()),const_cast<char *>(a.first), s);
 
 	//begin connection
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -154,6 +130,7 @@ void Usage(char* argg){
 	cout << "./" << argg << " [-c chainfile] [url]" << endl;
 	exit(1);
 }
+
 pair<const char*, const char*> handleArgs(int argc, char* argv[]){
 	if(argc == 2){
 		//handle the case where argv[1] is a url
@@ -179,18 +156,22 @@ pair<const char*, const char*> handleArgs(int argc, char* argv[]){
 		return {"",""};
 	}
 }
+
 bool isValidIP(string s){
 	return std::regex_match(s, std::regex("^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"));
 }
+
 void error(const string msg)
 {
  perror((msg.c_str()));
  exit(1);
 }
+
 void merror(const string msg){
 	cerr << msg << endl;
 	exit(1);
 }
+
 bool isInt(string s){
 	std::istringstream ss(s);
 	int i = 0;
@@ -200,18 +181,21 @@ bool isInt(string s){
 	else
 		return false;
 }
+
 bool is_number(const std::string& s)
 {
     string::const_iterator it = s.begin();
     while (it != s.end() && (std::isdigit(*it))) ++it;
     return !s.empty() && it == s.end();
 }
+
 bool is_number_or_dot(const std::string& s)
 {
     string::const_iterator it = s.begin();
     while (it != s.end() && (std::isdigit(*it)||*it=='.')) ++it;
     return !s.empty() && it == s.end();
 }
+
 struct MatchPathSeparator
 {
     bool operator()( char ch ) const
@@ -219,7 +203,9 @@ struct MatchPathSeparator
         return ch == '\\' || ch == '/';
     }
 };
+
 std::string
+
 basename( std::string const& pathname )
 {
     return std::string(
@@ -236,6 +222,7 @@ void wget(char* arg){
 	system(l.c_str());
 
 }
+
 void removeF(const char* arg){
 	if( std::remove(arg) != 0){
 		perror("Error deleting file");
@@ -289,12 +276,6 @@ vector<pair<string, int>> readChainFile(char* filee){
 
 
 
-
-
-
-
-
-
 pair<string, int> popRandom(vector<pair<string, int>>& Stones){
 
 	srand(time(NULL));
@@ -305,11 +286,6 @@ pair<string, int> popRandom(vector<pair<string, int>>& Stones){
 	Stones.erase(Stones.begin()+elem);
 	return ret;
 }
-
-
-
-
-
 
 
 
@@ -329,8 +305,6 @@ string convertListToString(vector<pair<string, int>> Stones){
 	return const_cast<char*>( i.substr(0, i.size()-1).c_str());
 }
 
-
-
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
     std::stringstream ss;
     ss.str(s);
@@ -346,6 +320,7 @@ std::vector<std::string> split(const std::string &s, char delim) {
     split(s, delim, elems);
     return elems;
 }
+
 vector<pair<string, int>> convertStringToList(char* Stones){
 	vector<pair<string, int>> ret;
 	const string st = Stones;
@@ -359,15 +334,3 @@ vector<pair<string, int>> convertStringToList(char* Stones){
 	}
 	return ret;
 }
-
-
-
-
-
-
-
-
-
-
-
-
