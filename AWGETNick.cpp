@@ -76,7 +76,6 @@ void cconnect(int port, char* hn, char* url, vector<pair<string, int>> ss){
 			perror("couldn't connect");
 		}
 		cout << "Connected!" << endl;
-		cout << "hostname is: " << gethostbyname(hn) << endl;
 
 			SSInfo* pak = (SSInfo*)malloc(sizeof(SSInfo));
 

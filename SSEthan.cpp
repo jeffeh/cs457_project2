@@ -328,7 +328,6 @@ vector<pair<string, int>> convertStringToList(char* Stones){
 string convertListToString(vector<pair<string, int>> Stones){
 	string i = "";
 	i+=std::to_string(Stones.size());
-	cout << "convertListToString before for loop and stone size is : " << Stones.size() << endl;
 	i+="\n";
 	for(pair<string, int> p:Stones){
 		i+=p.first;
