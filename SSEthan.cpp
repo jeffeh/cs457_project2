@@ -54,9 +54,9 @@ typedef struct packet_t{
 }packet;
 
 typedef struct p_SSInfo {
-  char url[1000];
-  int remainingSS;
-  char SSList[1000];
+	char url[1000];
+	int remainingSS;
+	char SSList[1000];
 } SSInfo;
 
 // Main Function
@@ -71,12 +71,12 @@ int main(int argc, char* argv[]){
 	}
 	switch(argc){
 		case 1:
-			server(6676);break;
+			server(20000);break;
 		case 2:
 			Usage(argv[0]); break;
 		default:
 			//client(port, host);
-      cout << "default" << endl;
+			cout << "default" << endl;
 	}
 
 	//cout << checkArgs(argc, argv) << endl;
@@ -178,24 +178,24 @@ int server(int port){
 	char buffer[4000];
 	struct sockaddr_in serverAddress, clientAddress;
 
-  // Socket creation
+	// Socket creation
 	socketFileDesc = socket(AF_INET, SOCK_STREAM, 0);
 	sockett = socketFileDesc;
 	if(socketFileDesc < 0){
 		error("could not open the socket");
 	}
 
-  // Populating serverAddress with IP info and port #
+	// Populating serverAddress with IP info and port #
 	bzero((char *) &serverAddress, sizeof(serverAddress));
 	serverAddress.sin_port = htons(port);
 	serverAddress.sin_addr.s_addr = INADDR_ANY;
 
-  // Binding the socket
+	// Binding the socket
 	if(bind(socketFileDesc, (struct sockaddr *) &serverAddress, sizeof(serverAddress)) < 0){
 		error("could not bind");
 	}
 
-  // Listen to the socket
+	// Listen to the socket
 	listen(socketFileDesc, 5);
 
 	cout << "Stepping stone has been setup!" << endl;
@@ -205,43 +205,47 @@ int server(int port){
 	cout << port << endl;
 
 
-  // Declare/initialize pthread array
-  pthread_t cThreads[3];
-  int threadCounter = 0;
+	// Declare/initialize pthread array
+	pthread_t cThreads[3];
+	int threadCounter = 0;
 
-  // 4. While loop statement
-  while (threadCounter < 3){
+	// 4. While loop statement
+	while (threadCounter < 3){
 
-    // Accept clients
-    // sizeOfAddrClient is unsigned int. cplucplus example declared it to be socklen_t
-    sizeOfAddrClient = sizeof(clientAddress);
-    newSocketFileDesc = accept(socketFileDesc, (struct sockaddr *) &clientAddress, &sizeOfAddrClient);
+		// Accept clients
+		// sizeOfAddrClient is unsigned int. cplucplus example declared it to be socklen_t
+		sizeOfAddrClient = sizeof(clientAddress);
+		newSocketFileDesc = accept(socketFileDesc, (struct sockaddr *) &clientAddress, &sizeOfAddrClient);
 
-    // Check if client was accepted
-    sockett2 = newSocketFileDesc;
-    if(newSocketFileDesc < 0){
-      error("error on acceptance");
-    }
+		// Check if client was accepted
+		sockett2 = newSocketFileDesc;
+		if(newSocketFileDesc < 0){
+			error("error on acceptance");
+		}
 
 
     cout << "A connection has been made!" << endl;
+		cout << "Found a friend! You recieve first." << endl;
 
-    // **************Testing recv of struct p_SSInfo and unpacking
+		// **************Testing recv of struct p_SSInfo and unpacking
 
-    SSInfo* testingSS = (SSInfo*)malloc(sizeof(SSInfo));
+		SSInfo* testingSS = (SSInfo*)malloc(sizeof(SSInfo));
 
-    //bzero(buffer, 1000);
+		//bzero(buffer, 1000);
 
-    int n = recv(newSocketFileDesc, buffer, sizeof(buffer), 0);
+		int n = recv(newSocketFileDesc, buffer, sizeof(buffer), 0);
 
-    //pac = (packet_t*)buffer;
-    //testingSS = (SSInfo *)buffer;
-    memcpy(testingSS, buffer, sizeof(p_SSInfo));
+		//pac = (packet_t*)buffer;
+		//testingSS = (SSInfo *)buffer;
+		memcpy(testingSS, buffer, sizeof(p_SSInfo));
+		cout << endl;
+		cout << "testingSS remaining stepping stones: " << testingSS->remainingSS << endl;
+		cout << endl;
 
-    // Checks for recv socket error
-    if(n < 0){
-      error("error reading from the socket");
-    }
+		// Checks for recv socket error
+		if(n < 0){
+			error("error reading from the socket");
+		}
 
 
     // sanity check to see if structure is correct
@@ -249,32 +253,35 @@ int server(int port){
 		printf("Chainlist is:\n");
     // end of structure check
 
-    // ******************
+		// ******************
 
-    // pthread_create
-    pthread_create(&cThreads[threadCounter], NULL, unpackForNextSteppingStoneConnection, (void *)testingSS);
-    threadCounter++;
+		// pthread_create
+		cout << "Starting creation of thread" << endl;
+		pthread_create(&cThreads[threadCounter], NULL, unpackForNextSteppingStoneConnection, (void *)testingSS);
+		threadCounter++;
 
     //if wget is called, we need to read and send the file
 
-  } // End of first while
+	} // End of first while
 
-  cout << "Threading part completed" << endl;
+	cout << "Threading part completed" << endl;
 
-  for (int i = 0; i < 3; i++) {
-    pthread_join(cThreads[i], NULL);
-  }
+	for (int i = 0; i < 3; i++) {
+		pthread_join(cThreads[i], NULL);
+	}
 
 	return 0;
 }
 
 // ----- creating a new thread start routine
 void *unpackForNextSteppingStoneConnection(void *SSInfoArg) {
+	cout << "Thread No: " << pthread_self() << endl;
 
-  SSInfo *ss_data;
+	SSInfo *ss_data;
 
-  ss_data = (SSInfo *)SSInfoArg;
+	ss_data = (SSInfo *)SSInfoArg;
 
+<<<<<<< HEAD
   // Convert ss info list to vector<pair< ip address, port>>
   vector<pair<string, int>> listr = convertStringToList(ss_data->SSList);
 
@@ -322,6 +329,7 @@ vector<pair<string, int>> convertStringToList(char* Stones){
 string convertListToString(vector<pair<string, int>> Stones){
 	string i = "";
 	i+=std::to_string(Stones.size());
+	cout << "convertListToString before for loop and stone size is : " << Stones.size() << endl;
 	i+="\n";
 	for(pair<string, int> p:Stones){
 		i+=p.first;
@@ -335,19 +343,19 @@ string convertListToString(vector<pair<string, int>> Stones){
 
 
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
-    std::stringstream ss;
-    ss.str(s);
-    std::string item;
-    while (std::getline(ss, item, delim)) {
-        elems.push_back(item);
-    }
+	std::stringstream ss;
+	ss.str(s);
+	std::string item;
+	while (std::getline(ss, item, delim)) {
+		elems.push_back(item);
+	}
 }
 
 
 std::vector<std::string> split(const std::string &s, char delim) {
-    std::vector<std::string> elems;
-    split(s, delim, elems);
-    return elems;
+	std::vector<std::string> elems;
+	split(s, delim, elems);
+	return elems;
 }
 
 
@@ -355,10 +363,10 @@ std::vector<std::string> split(const std::string &s, char delim) {
 void cconnect(int port, char* hn, char* url, vector<pair<string, int>> ss){
 	int socketFileDesc;
 
-		int n;
-		struct sockaddr_in serverAddress;
-		struct hostent *server;
-		char buffer[4000];
+	int n;
+	struct sockaddr_in serverAddress;
+	struct hostent *server;
+	char buffer[4000];
 
 		// Open a socket
 		socketFileDesc = socket(AF_INET, SOCK_STREAM, 0);
@@ -387,19 +395,20 @@ void cconnect(int port, char* hn, char* url, vector<pair<string, int>> ss){
 
 			SSInfo* pak = (SSInfo*)malloc(sizeof(SSInfo));
 
-		  strcpy(pak->url, url);
+	strcpy(pak->url, url);
+	pak->remainingSS = ss.size();
+	char tos[1000];
+	cout << convertListToString(ss)<<endl;
+	string stringzz = convertListToString(ss).c_str();
+	strcpy(pak->SSList, convertListToString(ss).c_str());
 
-		  pak->remainingSS = ss.size();
-		  char tos[1000];
-		  cout << convertListToString(ss)<<endl;
- 		  strcpy(pak->SSList, convertListToString(ss).c_str());
- 		  //pak->SSList = tos;
-		memcpy(buffer, pak, sizeof(p_SSInfo));
+	memcpy(buffer, pak, sizeof(p_SSInfo));
 
-		SSInfo* pakk = (p_SSInfo*)buffer;
+	SSInfo* pakk = (p_SSInfo*)buffer;
 
-		cout << "Sending url" << endl;
-		n = send(socketFileDesc, buffer, sizeof(buffer), 0);
+	cout << "Sending url" << endl;
+	cout << "The url is: " << pakk -> url << endl;
+	n = send(socketFileDesc, buffer, sizeof(buffer), 0);
 
 		if(n < 0){
 			perror("error writing to socket");
@@ -413,7 +422,7 @@ void wget(char* arg){
 	std::string w = "wget -q ";
 	std::string g = arg;
 	std::string l = w.append(g);
-
+	
 	system(l.c_str());
 
 }
