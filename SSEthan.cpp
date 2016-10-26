@@ -281,7 +281,6 @@ void *unpackForNextSteppingStoneConnection(void *SSInfoArg) {
 
 	ss_data = (SSInfo *)SSInfoArg;
 
-<<<<<<< HEAD
   // Convert ss info list to vector<pair< ip address, port>>
   vector<pair<string, int>> listr = convertStringToList(ss_data->SSList);
 
