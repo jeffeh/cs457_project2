@@ -1,8 +1,11 @@
 //
 // Created by Ethan Loza on 10/19/16.
 //
+#include <unistd.h>
+#include <algorithm>
 #include <iostream>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -30,7 +33,7 @@ void error(const string msg);
 void sig_handler(int signal);
 void Usage(char* argv);
 
-void splitUrlName (const std::string &url);
+string splitUrlName (const std::string &url);
 
 vector<pair<string, int>> convertStringToList(char* Stones);
 string convertListToString(vector<pair<string, int>> Stones);
@@ -206,19 +209,22 @@ int server(int port){
 
 
 	// Declare/initialize pthread array
-	pthread_t cThreads[3];
+	pthread_t cThreads; //[3];
 	int threadCounter = 0;
 
 	//sizeOfAddrClient = sizeof(struct sockaddr_in);
 		sizeOfAddrClient = sizeof(clientAddress);
 
+		int client_socket;
+
 	// 4. While loop statement
-	while (threadCounter < 3){
+	while ( (client_socket = accept(socketFileDesc, (struct sockaddr *) &clientAddress, &sizeOfAddrClient))){
 
 		// Accept clients
 		// sizeOfAddrClient is unsigned int. cplucplus example declared it to be socklen_t
 		//sizeOfAddrClient = sizeof(clientAddress);
-		newSocketFileDesc = accept(socketFileDesc, (struct sockaddr *) &clientAddress, &sizeOfAddrClient);
+		newSocketFileDesc = client_socket; //accept(socketFileDesc, (struct sockaddr *) &clientAddress, &sizeOfAddrClient);
+		cout << "client socket is --------------------------------- " << client_socket << endl;
 
 		// Check if client was accepted
 		sockett2 = newSocketFileDesc;
@@ -259,19 +265,78 @@ int server(int port){
 		// ******************
 
 		// pthread_create
+		vector<pair<string, int>> theList = convertStringToList(testingSS->SSList);
+		if (!theList.empty()) {
 		cout << "Starting creation of thread" << endl;
-		pthread_create(&cThreads[threadCounter], NULL, unpackForNextSteppingStoneConnection, (void *)testingSS);
-		threadCounter++;
+			pthread_create(&cThreads, NULL, unpackForNextSteppingStoneConnection, (void *)testingSS);
+		} else {
+			cout << endl;
+			cout << "got into the else statement" << endl;
+			packet* testPacket = (packet*)malloc(sizeof(packet));
+			char sigh[] = "downloaded the file cat.jpg";
+			cout << "packet *testacket line" << endl;
+			strcpy(testPacket->message, sigh);
+			cout << "testPacket->message contains: " << testPacket->message << endl;
 
+
+			wget(testingSS->url);
+
+			//char testMessage[140] = "downloaded the file of the stupid cat";
+			cout << "wget finished calling and downloaded the file, we are now trying to send the file" << endl;
+
+			char buffer[4000];
+			memcpy(buffer, testPacket, sizeof(packet));
+
+			int j = send(client_socket, buffer, sizeof(buffer), 0);
+
+
+
+			if (j < 0) {
+				cout << "failed to send the cat pic" << endl;
+			}
+		}
     //if wget is called, we need to read and send the file
 
+		string fileNameFromUrl = splitUrlName(testingSS->url);
+
+
+		if (!theList.empty()) {
+			//sleep(10);
+			cout << "\tpthread_join is called" << endl;
+			pthread_join(cThreads, NULL);
+			cout << "\tpthread_join is FINISHED calling" << endl;
+			threadCounter++;
+
+			cout << endl;
+			cout << "got into the else statement" << endl;
+			packet* testPacket = (packet*)malloc(sizeof(packet));
+			char sigh[] = "AAAAAAAAAAAA downloaded the file cat.jpg";
+			cout << "packet *testacket line" << endl;
+			strcpy(testPacket->message, sigh);
+			cout << "testPacket->message contains: " << testPacket->message << endl;
+
+
+			char buffer[4000];
+			memcpy(buffer, testPacket, sizeof(packet));
+
+			int j = send(client_socket, buffer, sizeof(buffer), 0);
+
+
+
+			if (j < 0) {
+				cout << "failed to send the cat pic" << endl;
+			}
+
+			cout << "threadCounter??????? uhhhhh++++++++++++++++++++++++++++++++++++++++: " << threadCounter << endl;
+
+		}
 	} // End of first while
 
 	cout << "Threading part completed" << endl;
 
-	for (int i = 0; i < 3; i++) {
-		pthread_join(cThreads[i], NULL);
-	}
+//	for (int i = 0; i < 3; i++) {
+//		pthread_join(cThreads[i], NULL);
+//	}
 
 	return 0;
 }
@@ -297,19 +362,21 @@ void *unpackForNextSteppingStoneConnection(void *SSInfoArg) {
     // connect to the randomly chosen stone
     cconnect(next.second, const_cast<char*>(next.first.c_str()), ss_data->url, listr);
   }
-  else{
-    cout << "this is the end, no chainlist" << endl;
-    cout << "calling wget" << endl;
-    wget(ss_data->url);
-    cout << "wget is done calling!" << endl;
-    splitUrlName(ss_data->url);
-  }
+//  else{
+//    cout << "this is the end, no chainlist" << endl;
+//    cout << "calling wget" << endl;
+//    wget(ss_data->url);
+//    cout << "wget is done calling!" << endl;
+//    string testingFileName = splitUrlName(ss_data->url);
+//    cout << "ss_data->url is: " << testingFileName << endl;
+//  }
 }
 
-void splitUrlName (const std::string &url) {
+string splitUrlName (const std::string &url) {
 	cout << "Splitting url: " << url << endl;
 	std::size_t found = url.find_last_of("/\\");
 	cout << "File Name: " << url.substr(found + 1) << endl;
+	return url.substr(found + 1);
 }
 
 // ----- ending new thread routine
@@ -415,6 +482,14 @@ void cconnect(int port, char* hn, char* url, vector<pair<string, int>> ss){
 			perror("error writing to socket");
 		}
 		free(pak);
+
+		packet *testMessage;
+		int j = recv(socketFileDesc, buffer, 4000, 0);
+		testMessage = (packet*)buffer;
+		cout << "DID IT WORK? ---- " << testMessage->message << endl;
+		sleep(10);
+
+
 }
 
 
