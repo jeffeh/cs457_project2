@@ -199,7 +199,11 @@ int server(int port){
 	}
 
 	// Listen to the socket
-	listen(socketFileDesc, 5);
+	int listenValue = listen(socketFileDesc, 5);
+
+	if (listenValue < 0) {
+		cout << "LIIIIIIIIIIIIIIIIIIIIIIIINDA LISTENNNNNNNNNNNNNNNNNNNNNNNN" << endl;
+	}
 
 	cout << "Stepping stone has been setup!" << endl;
 	cout << "Waiting for connection on ";
@@ -216,6 +220,13 @@ int server(int port){
 		sizeOfAddrClient = sizeof(clientAddress);
 
 		int client_socket;
+		pthread_attr_t attr;
+	    void *status;
+	    pthread_attr_init(&attr);
+	    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+
+
 
 	// 4. While loop statement
 	while ( (client_socket = accept(socketFileDesc, (struct sockaddr *) &clientAddress, &sizeOfAddrClient))){
@@ -224,7 +235,9 @@ int server(int port){
 		// sizeOfAddrClient is unsigned int. cplucplus example declared it to be socklen_t
 		//sizeOfAddrClient = sizeof(clientAddress);
 		newSocketFileDesc = client_socket; //accept(socketFileDesc, (struct sockaddr *) &clientAddress, &sizeOfAddrClient);
+		cout << endl;
 		cout << "client socket is --------------------------------- " << client_socket << endl;
+		cout << "server socket is --------------------------------- " << socketFileDesc << endl;
 
 		// Check if client was accepted
 		sockett2 = newSocketFileDesc;
@@ -241,14 +254,13 @@ int server(int port){
 		SSInfo* testingSS = (SSInfo*)malloc(sizeof(SSInfo));
 
 		//bzero(buffer, 1000);
-
+		// receiving remaing stepping stones and url
 		int n = recv(newSocketFileDesc, buffer, sizeof(buffer), 0);
 
 		//pac = (packet_t*)buffer;
 		//testingSS = (SSInfo *)buffer;
 		memcpy(testingSS, buffer, sizeof(p_SSInfo));
-		cout << endl;
-		cout << "testingSS remaining stepping stones: " << testingSS->remainingSS << endl;
+		cout << "\t\ttestingSS remaining stepping stones: " << testingSS->remainingSS << endl;
 		cout << endl;
 
 		// Checks for recv socket error
@@ -258,8 +270,8 @@ int server(int port){
 
 
     // sanity check to see if structure is correct
-		printf("Requested: %s\n", testingSS->url);
-		printf("Chainlist is:\n");
+		//printf("___Requested: %s\n", testingSS->url);
+		//printf("___Chainlist is:\n");
     // end of structure check
 
 		// ******************
@@ -267,22 +279,21 @@ int server(int port){
 		// pthread_create
 		vector<pair<string, int>> theList = convertStringToList(testingSS->SSList);
 		if (!theList.empty()) {
-		cout << "Starting creation of thread" << endl;
-			pthread_create(&cThreads, NULL, unpackForNextSteppingStoneConnection, (void *)testingSS);
+		//cout << "Starting creation of thread" << endl;
+			pthread_create(&cThreads, &attr , unpackForNextSteppingStoneConnection, (void *)testingSS);
 		} else {
 			cout << endl;
-			cout << "got into the else statement" << endl;
+			cout << "### got into the else statement" << endl;
 			packet* testPacket = (packet*)malloc(sizeof(packet));
 			char sigh[] = "downloaded the file cat.jpg";
-			cout << "packet *testacket line" << endl;
 			strcpy(testPacket->message, sigh);
-			cout << "testPacket->message contains: " << testPacket->message << endl;
+			cout << "### testPacket->message contains: " << testPacket->message << endl;
 
 
 			wget(testingSS->url);
 
 			//char testMessage[140] = "downloaded the file of the stupid cat";
-			cout << "wget finished calling and downloaded the file, we are now trying to send the file" << endl;
+			cout << "### wget finished calling and downloaded the file" << endl;
 
 			char buffer[4000];
 			memcpy(buffer, testPacket, sizeof(packet));
@@ -299,19 +310,23 @@ int server(int port){
 
 		string fileNameFromUrl = splitUrlName(testingSS->url);
 
-
+		// for client threads after they finished executing their code
 		if (!theList.empty()) {
 			//sleep(10);
+			pthread_attr_destroy(&attr);
+			cout << endl;
+			cout << "2nd if statement" << endl;
 			cout << "\tpthread_join is called" << endl;
-			pthread_join(cThreads, NULL);
-			cout << "\tpthread_join is FINISHED calling" << endl;
+			int rc = pthread_join(cThreads, &status);
+			if (rc) {
+				cout << "ERROR unable to join pthreads" << endl;
+			}
+			cout << "\tpthread_join is FINISHED calling and status is : " << status << endl;
 			threadCounter++;
 
 			cout << endl;
-			cout << "got into the else statement" << endl;
 			packet* testPacket = (packet*)malloc(sizeof(packet));
 			char sigh[] = "AAAAAAAAAAAA downloaded the file cat.jpg";
-			cout << "packet *testacket line" << endl;
 			strcpy(testPacket->message, sigh);
 			cout << "testPacket->message contains: " << testPacket->message << endl;
 
@@ -455,6 +470,7 @@ void cconnect(int port, char* hn, char* url, vector<pair<string, int>> ss){
 		bcopy((char*)server->h_addr, (char*)&serverAddress.sin_addr.s_addr, server->h_length);
 		serverAddress.sin_port = htons(port);
 
+		cout << endl;
 		cout << "Connecting to server... ";
 		if(connect(socketFileDesc, (sockaddr *)&serverAddress, sizeof(serverAddress)) < 0){
 			perror("couldn't connect");
@@ -476,6 +492,7 @@ void cconnect(int port, char* hn, char* url, vector<pair<string, int>> ss){
 
 	cout << "Sending url" << endl;
 	cout << "The url is: " << pakk -> url << endl;
+	cout << endl;
 	n = send(socketFileDesc, buffer, sizeof(buffer), 0);
 
 		if(n < 0){
@@ -486,7 +503,7 @@ void cconnect(int port, char* hn, char* url, vector<pair<string, int>> ss){
 		packet *testMessage;
 		int j = recv(socketFileDesc, buffer, 4000, 0);
 		testMessage = (packet*)buffer;
-		cout << "DID IT WORK? ---- " << testMessage->message << endl;
+		//cout << "DID IT WORK? ---- " << testMessage->message << endl;
 		sleep(10);
 
 
