@@ -15,6 +15,7 @@
 #include <netdb.h>
 #include <thread>
 #include <mutex>
+#include <signal.h>
 using namespace std;
 int sockett;
 //std::mutex lock;
@@ -323,11 +324,9 @@ void removeF(const char* arg){
 	}
 
 }
-void mt(int socketFileDesc){
+void mt(int socketFileDesc, int newSocketFileDesc){
 	int n = 1;
-	struct sockaddr_in clientAddress;
-			unsigned int sizeOfAddrClient = sizeof(clientAddress);
-			int newSocketFileDesc = accept(socketFileDesc, (struct sockaddr *) &clientAddress, &sizeOfAddrClient);
+
 
 			if(newSocketFileDesc < 0){
 				error("error on acceptance");
@@ -427,18 +426,50 @@ int handleArgs(int argc, char* argv[]){
 	return atoi(argv[2]);
 
 }
+void do_join(std::thread& t)
+{
+    t.join();
+}
+
+void join_all(std::vector<std::thread>& v)
+{
+    std::for_each(v.begin(),v.end(),do_join);
+}
+vector<int> socketts;
+void my_handler(int s){
+
+           for (int i:socketts){
+        	   close(i);
+           }
+           exit(1);
+}
+
 int main(int argc, char* argv[]){
+	struct sigaction sigIntHandler;
+
+	   sigIntHandler.sa_handler = my_handler;
+	   sigemptyset(&sigIntHandler.sa_mask);
+	   sigIntHandler.sa_flags = 0;
+
+	   sigaction(SIGINT, &sigIntHandler, NULL);
 	int port = handleArgs(argc, argv);
 	int socketFileDesc = setUpServer(port);
-
+	socketts.push_back(socketFileDesc);
 	cout << "ss  "; getmyip();cout << ", " << port << ":" << endl;
+	std::vector<std::thread> ts;
+
 	while(true){
 
 	listen(socketFileDesc, 5);
-	std::thread t1(mt, socketFileDesc);
-	t1.join();
-	}
+	struct sockaddr_in clientAddress;
+			unsigned int sizeOfAddrClient = sizeof(clientAddress);
+			int newSocketFileDesc = accept(socketFileDesc, (struct sockaddr *) &clientAddress, &sizeOfAddrClient);
+			socketts.push_back(newSocketFileDesc);
 
+	ts.push_back(std::thread(mt, socketFileDesc, newSocketFileDesc));
+
+	}
+	join_all(ts);
 
 
 

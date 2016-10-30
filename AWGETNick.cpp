@@ -424,10 +424,9 @@ void sendAck(int fileDesc){
 }
 
 void recieveFile(int fileDesc, const char* name){
-	bool end = false;
+
 
 	int counter = 0;
-	int size = 0;
 	int n = 1;
 	char buffer[1200];
 	n = recv(fileDesc, buffer, 1200, MSG_WAITALL);
@@ -435,8 +434,8 @@ void recieveFile(int fileDesc, const char* name){
 	while(n){
 		char buffer[1200];
 		n = recv(fileDesc, buffer, 1200, MSG_WAITALL);
-		filePacket* p;
-		char* mes;
+
+
 
 		counter ++;
 
