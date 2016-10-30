@@ -502,12 +502,7 @@ void chunkFile(char *fullFilePath, unsigned long chunkSize, int fileDesc) {
 				fileStream.read(buffer,chunkSize);
 
 				counter++;
-
-
-
-
 				sendMessage(fileDesc, buffer);
-
 
 
 
