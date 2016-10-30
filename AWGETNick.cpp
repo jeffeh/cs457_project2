@@ -19,6 +19,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <string>
+#include <signal.h>
 using namespace std;
 void wget(char* arg);
 void removeF(const char* arg);
@@ -31,7 +32,12 @@ inline bool fileExists(const std::string& name) {
 void merror(const string msg);
 pair<string, int> popRandom(vector<pair<string, int>>& Stones);
 void error(const string msg);
-
+int sockett;
+void my_handler(int s){
+	close(sockett);
+	printf("caught signal %d\n", s);
+	exit(1);
+}
 
 typedef struct p_SSInfo {
 	char url[1000];
@@ -48,7 +54,7 @@ typedef struct filePacket {
 }FILEInfo;
 
 string convertListToString(vector<pair<string, int>> Stones);
-int sockett;
+
 int connectToServer(char* hostname, int port){
 	int socketFileDesc;
 	struct sockaddr_in serverAddress;
@@ -68,11 +74,11 @@ int connectToServer(char* hostname, int port){
 	serverAddress.sin_family = AF_INET;
 	bcopy((char*)server->h_addr, (char*)&serverAddress.sin_addr.s_addr, server->h_length);
 	serverAddress.sin_port = htons(port);
-	cout << "Connecting to server... ";
+
 	if(connect(socketFileDesc, (sockaddr *)&serverAddress, sizeof(serverAddress)) < 0){
 		error("couldn't connect");
 	}
-	cout << "Connected!" << endl;
+	sockett = socketFileDesc;
 	return socketFileDesc;
 }
 void sendMessage(int fileDesc, SSInfo* pak){
@@ -84,18 +90,53 @@ void sendMessage(int fileDesc, SSInfo* pak){
 		error("error writing to socket");
 	}
 }
+char* get_all_buf(int sock, std::string & output) {
+    char buffer[1200];
+
+    int n;
+    while((errno = 0, (n = recv(sock, buffer, sizeof(buffer), 0))>0) ||
+          errno == EINTR)
+    {
+        if(n>0)
+            output.append(buffer, n);
+    }
+
+    if(n < 0){
+        /* handle error - for example throw an exception*/
+    }
+    return const_cast<char*>(output.c_str());
+};
 filePacket* recievePacket(int socketFileDesc, filePacket* OfType){
+
 	int n = 0;
 	char buffer[1200];
-	n = recv(socketFileDesc, buffer, sizeof(buffer), 0);
-
+	string out;
+	n = recv(socketFileDesc, buffer, sizeof(buffer), MSG_WAITALL);
+//	while(out.length()<1200){
+//		n = recv(socketFileDesc, buffer, sizeof(buffer), 0);
+//		cout << "Gen" << endl;
+//		out.append(buffer);
+//		bzero(buffer, 1200);
+//	}
+//
+	cout << "n was " << n << endl;
 	filePacket* pac = (filePacket*) buffer;
+	cout << "buffer size: " << strlen(buffer) << endl;
+	cout << "buffer len: " << strlen(pac->mes) << endl;
 	if(n<0){
 		error("error reading from the socket");
 	}
 	return pac;
 }
-void recieveFile(int fileDesc);
+char* recieveMessage(int socketFileDesc){
+	int n=0;
+	char* buffer = (char*)malloc(1200*sizeof(char));
+	n = recv(socketFileDesc, buffer, 1200, MSG_WAITALL);
+	cout << "n " << n << endl;
+	cout << strlen(buffer) << endl;
+	return buffer;
+}
+void recieveFile(int fileDesc, const char* name);
 int cconnect(int port, char* hn, char* url, vector<pair<string, int>> ss){
 	int socketFileDesc = connectToServer(hn, port);
 
@@ -107,13 +148,24 @@ int cconnect(int port, char* hn, char* url, vector<pair<string, int>> ss){
 	strcpy(pak->SSList, convertListToString(ss).c_str());
 
 	sendMessage(socketFileDesc, pak);
-	recieveFile(socketFileDesc);
+	recieveFile(socketFileDesc, basename(url));
 
 	free(pak);
 	return socketFileDesc;
 }
 
 int main(int argc, char* arv[]){
+
+	struct sigaction sigIntHandler;
+
+	sigIntHandler.sa_handler = my_handler;
+	sigemptyset(&sigIntHandler.sa_mask);
+	sigIntHandler.sa_flags = 0;
+
+	sigaction(SIGINT, &sigIntHandler, NULL);
+
+
+	cout << "awget:" <<endl;
 	pair<const char*, const char*> a = handleArgs(argc, arv);
 
 	if(fileExists(a.second)==false){
@@ -122,13 +174,17 @@ int main(int argc, char* arv[]){
 		string p = " not found";
 		merror((m+o+p).c_str());
 	}
-
+	cout << "Request: " << a.first << endl;
+	cout << "chainlist is" << endl;
 	vector<pair<string, int>> s = readChainFile(const_cast<char *>(a.second));
-
+	for(pair<string, int> i:s){
+		cout << i.first << ", " << i.second << endl;
+	}
 	pair<string, int>firstStone = popRandom(s);
-	cout << "Stepping stone to connect to: " << firstStone.first << " on port: " << firstStone.second << endl;
+	cout << "next SS is " << firstStone.first << ", " << firstStone.second << endl;
+	cout << "waiting for file..." << endl;
 	cconnect(firstStone.second, const_cast<char *>(firstStone.first.c_str()),const_cast<char *>(a.first), s);
-
+	cout << "Goodbye!" << endl;
 
 }
 
@@ -232,7 +288,7 @@ basename( std::string const& pathname )
 }
 
 void wget(char* arg){
-	std::string w = "wget -q ";
+	std::string w = "wget ";
 	std::string g = arg;
 	std::string l = w.append(g);
 
@@ -280,11 +336,7 @@ vector<pair<string, int>> readChainFile(char* filee){
 	 if(SteppingStonesCount != Stones.size()){
 		 merror("Chainfile format error");
 	 }
-//	 cout << "Number of stones: " << SteppingStonesCount << endl;
-//	 cout << "Stones:" << endl;
-//	 for(pair<string, int> t:Stones){
-//		 cout << "IP: " << t.first << ", Port: " << t.second << endl;
-//	 }
+
 	 return Stones;
 }
 
@@ -353,7 +405,6 @@ vector<pair<string, int>> convertStringToList(char* Stones){
 	vector<pair<string, int>> ret;
 	const string st = Stones;
 	vector<string> l = split(st, '\n');
-	int c = atoi(l.at(0).c_str());
 	l.erase(l.begin(), l.begin()+1);
 	for (string i:l){
 		std::string host = i.substr(0, i.find(" "));
@@ -372,23 +423,32 @@ void sendAck(int fileDesc){
 	}
 }
 
-void recieveFile(int fileDesc){
+void recieveFile(int fileDesc, const char* name){
 	bool end = false;
-	FILE * out = fopen("Out.html", "a");
-	int counter = 0;
-	while(!end){
 
+	int counter = 0;
+	int size = 0;
+	int n = 1;
+	char buffer[1200];
+	n = recv(fileDesc, buffer, 1200, MSG_WAITALL);
+	FILE * out = fopen(buffer, "wb");
+	while(n){
+		char buffer[1200];
+		n = recv(fileDesc, buffer, 1200, MSG_WAITALL);
 		filePacket* p;
-		p = recievePacket(fileDesc, p);
-		cout << "recieving" << endl;
-		//cout << p->last << endl;
-		sendAck(fileDesc);
-		cout << p->mes << endl;
+		char* mes;
+
 		counter ++;
-		cout << counter<<endl;
+
+		if(strcmp(buffer, "END")==0){
+			n = 0;
+		} else {
+			fwrite(buffer, 1200, 1, out);
+		}
 	}
-	cout << "ending" << endl;
 	fclose(out);
+	close(fileDesc);
+	cout << "Received file "  << buffer << endl;
 }
 
 

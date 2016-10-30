@@ -13,9 +13,29 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <thread>
+#include <mutex>
 using namespace std;
 int sockett;
-
+//std::mutex lock;
+//vector<int> socketts;
+//void addSock(int i){
+//	lock.lock();
+//	socketts.push_back(i);
+//	lock.unlock();
+//
+//}
+//void removeSock(int i){
+//	lock.lock();
+//	for(int j=0; j<socketts.size(); j++){
+//		if(i==socketts.at(j)){
+//			socketts.erase(socketts.begin()+j);
+//			lock.unlock();
+//			return;
+//		}
+//	}
+//	lock.unlock();
+//}
 void chunkFile(char *fullFilePath, unsigned long chunkSize, int fileDesc);
 /* Packet Structure for Chainfile and URL */
 typedef struct p_SSInfo {
@@ -103,7 +123,6 @@ vector<pair<string, int>> convertStringToList(char* Stones){
 	vector<pair<string, int>> ret;
 	const string st = Stones;
 	vector<string> l = split(st, '\n');
-	int c = atoi(l.at(0).c_str());
 	l.erase(l.begin(), l.begin()+1);
 	for (string i:l){
 		std::string host = i.substr(0, i.find(" "));
@@ -137,8 +156,10 @@ int connectToServer(char* hostname, int port){
 		perror("couldn't connect");
 	}
 	cout << "Connected!" << endl;
+	sockett = socketFileDesc;
 	return socketFileDesc;
 }
+void sendMessage(int sock, char mes[1200]);
 void sendMessage(int fileDesc, SSInfo* pak){
 	char buffer[4000];
 	memcpy(buffer, pak, sizeof(p_SSInfo));
@@ -153,8 +174,8 @@ void sendMessage(int fileDesc, filePacket* pak){
 
 	memcpy(buffer, pak, sizeof(filePacket));
 	int n = 0;
-	filePacket* pack = (filePacket*)pak;
 
+	cout << "buff size: " << sizeof(buffer) << endl;
 	n = send(fileDesc, buffer, sizeof(buffer), 0);
 	if(n < 0){
 		perror("error writing to socket");
@@ -176,12 +197,36 @@ int cconnect(int port, char* hn, char* url, vector<pair<string, int>> ss){
 	return socketFileDesc;
 
 }
-void wget(char* arg){
-	std::string w = "wget -q ";
+std::string wget(char* arg){
+
+	char buffer[128];
+	std::string w = "wget ";
 	std::string g = arg;
 	std::string l = w.append(g);
+	l = l.append(" 2>&1");
+	std::string result = "";
+	char* cmd = const_cast<char*>(l.c_str());
+	std::shared_ptr<FILE> pipe(popen(cmd, "r"), pclose);
+	sleep(1);
+	if (!pipe) throw std::runtime_error("popen() failed!");
+	while (!feof(pipe.get())) {
+		if (fgets(buffer, 128, pipe.get()) != NULL){
+			result += buffer;
+		}
 
-	system(l.c_str());
+	}
+
+	std::string s = "Saving to: ";
+	std::size_t loc = result.find(s, 0);
+	loc += 14;
+	result = result.substr(loc);
+	result = result.substr(0, result.find("’", 0));
+
+
+
+
+
+	return result;
 
 }
 int setUpServer(int port){
@@ -239,7 +284,6 @@ filePacket* recievePacket(int socketFileDesc, filePacket* OfType){
 	if(n<0){
 		error("error reading from the socket");
 	}
-	//cout << "recv got: " << pac->last << endl;
 	OfType = pac;
 	return pac;
 }
@@ -260,7 +304,7 @@ basename( std::string const& pathname )
 }
 
 void sendAck(int fileDesc){
-	char* a = "ack";
+	char a[4] = "ack";
 	int n = send(fileDesc, a, sizeof(a), 0);
 	if(n < 0){
 		perror("error on ack");
@@ -273,82 +317,141 @@ void receiveAck(int fileDesc){
 			error("error reading from the socket");
 		}
 }
+void removeF(const char* arg){
+	if( std::remove(arg) != 0){
+		perror("Error deleting file");
+	}
 
+}
+void mt(int socketFileDesc){
+	int n = 1;
+	struct sockaddr_in clientAddress;
+			unsigned int sizeOfAddrClient = sizeof(clientAddress);
+			int newSocketFileDesc = accept(socketFileDesc, (struct sockaddr *) &clientAddress, &sizeOfAddrClient);
+
+			if(newSocketFileDesc < 0){
+				error("error on acceptance");
+			}
+
+
+		p_SSInfo* pac;
+		pac = recievePacket(newSocketFileDesc, pac);
+
+
+
+
+
+
+
+
+
+		vector<pair<string, int>> listr = convertStringToList(pac->SSList);
+
+		if(!listr.empty()){
+			printf("Request: %s\n", pac->url);
+			printf("chainlist is\n");
+			for(pair<string, int> i:listr){
+						cout << "IP: " << i.first << ", Port:" << i.second << endl;
+					}
+			pair<string, int> next = popRandom(listr);
+			cout << "next SS is " << next.first << ", " << next.second << endl;
+			cout << "waiting for file..." << endl;
+					int nextFD = cconnect(next.second, const_cast<char*>(next.first.c_str()), pac->url, listr);
+					int n = 1;
+					char fnbuffer[1200];
+					n = recv(nextFD, fnbuffer, 1200, MSG_WAITALL);
+					if(n<0){
+						cout << "Error recieving filename" << endl;
+					}
+					sendMessage(newSocketFileDesc, fnbuffer);
+					cout << "Relaying file ..." << endl;
+					while(n){
+							char buffer[1200];
+							n = recv(nextFD, buffer, 1200, MSG_WAITALL);
+
+							if(strcmp(buffer, "END")==0){
+								sendMessage(newSocketFileDesc, buffer);
+								n = 0;
+
+
+							} else {
+								sendMessage(newSocketFileDesc, buffer);
+
+							}
+							cout << n << endl;
+						}
+					cout << "Goodbye!" << endl;
+					close(nextFD);
+
+		}
+
+		// If the recieved chainfile is empty, this is the last one, call wget
+		else{
+			cout << "Request: " << pac->url << endl;
+			cout << "chainlist is empty" << endl;
+			std::string filename = wget(pac->url);
+			cout << "issueing wget for file " << filename << endl;
+			cout << "File received" << endl;
+			cout << "Relaying file ..." << endl;
+			char tos[1200];
+			strcpy(tos, filename.c_str());
+			sendMessage(newSocketFileDesc, tos);
+
+			char* localFile = const_cast<char*>(filename.c_str());
+			chunkFile(localFile, 1200, newSocketFileDesc);
+			removeF(localFile);
+			cout << "Goodbye!"<<endl;
+		}
+
+		if(n<0){
+			error("couldn't write to socket");
+		}
+}
+bool is_number(const std::string& s)
+{
+    string::const_iterator it = s.begin();
+    while (it != s.end() && (std::isdigit(*it))) ++it;
+    return !s.empty() && it == s.end();
+}
+int handleArgs(int argc, char* argv[]){
+	if(argc != 3){
+		error("argument error");
+	}
+	else if(strcmp(argv[1], "-p")!=0){
+		error("argument error");
+	}
+	std::string three = argv[2];
+	if(is_number(three)==false){
+		error("argument error");
+	}
+	return atoi(argv[2]);
+
+}
 int main(int argc, char* argv[]){
-	cout << sizeof(filePacket) << endl;
-	filePacket* p = (filePacket*)malloc(sizeof(filePacket));
-	//cout << p->last << endl;
-	filePacket* p2 = (filePacket*)malloc(sizeof(filePacket));
-		//cout << p2->last << endl;
-	int port = 20001;
+	int port = handleArgs(argc, argv);
 	int socketFileDesc = setUpServer(port);
-	int n;
-	char buffer[4000];
 
-	cout << "Stepping Stone Started on "; getmyip();cout << " port " << port << endl;
+	cout << "ss  "; getmyip();cout << ", " << port << ":" << endl;
+	while(true){
 
-	int newSocketFileDesc = listenAndAccept(socketFileDesc);
-
-
-	p_SSInfo* pac;
-	pac = recievePacket(newSocketFileDesc, pac);
-
-
-
-
-
-
-
-
-	printf("Url recieved: %s\n", pac->url);
-	printf("Chainlist recieved:\n");
-	vector<pair<string, int>> listr = convertStringToList(pac->SSList);
-
-	// If the recieved chainfile is not empty, forward to the next stone
-	if(!listr.empty()){
-		for(pair<string, int> i:listr){
-					cout << "IP: " << i.first << ", Port:" << i.second << endl;
-				}
-		pair<string, int> next = popRandom(listr);
-				int nextFD = cconnect(next.second, const_cast<char*>(next.first.c_str()), pac->url, listr);
-				lo:
-				filePacket* f;
-				//cout << f->last << "(before)" << endl;
-				recievePacket(nextFD, f);
-				sendMessage(newSocketFileDesc, f);
-				//cout <<"last: " << f->last << endl;
-
-
-//				if(f->last == 0){
-//					f = NULL;
-//					goto lo;
-//				}
-//				else{
-//					cout << "last no zero" << endl;
-//				}
-
+	listen(socketFileDesc, 5);
+	std::thread t1(mt, socketFileDesc);
+	t1.join();
 	}
 
-	// If the recieved chainfile is empty, this is the last one, call wget
-	else{
-		cout << "this is the end, no chainlist" << endl;
-		cout << "calling wget" << endl;
-		wget(pac->url);
-		char* localFile = basename(pac->url);
-		chunkFile(localFile, 1200, newSocketFileDesc);
-	}
-
-	if(n<0){
-		error("couldn't write to socket");
-	}
 
 
 
 
 		return 0;
 }
+void sendMessage(int sock, char mes[1200]){
+	int n = send(sock, mes, 1200, 0);
+	if(n<0)
+		error("couldn't write to socket");
+}
 
-
+// MSG_WAITALL
 void chunkFile(char *fullFilePath, unsigned long chunkSize, int fileDesc) {
 	ifstream fileStream;
 	fileStream.open(fullFilePath, ios::in | ios::binary);
@@ -359,51 +462,37 @@ void chunkFile(char *fullFilePath, unsigned long chunkSize, int fileDesc) {
 
 
 
-		char *buffer = new char[chunkSize];
+
 
 
 		while (!fileStream.eof()) {
 				char* buffer = new char[chunkSize];
-				cout << "starting read" << endl;
+
 				fileStream.read(buffer,chunkSize);
-				cout << "read " << endl;
+
 				counter++;
-				filePacket* p = (filePacket*)malloc(sizeof(filePacket));
-
-
-				strcpy(p->mes, buffer);
 
 
 
-				sendMessage(fileDesc, p);
-				receiveAck(fileDesc);
 
-				cout << "recieved ack" << endl;
-				//bzero(buffer, chunkSize);
-				//free(p);
-				cout << "endloop " << counter-1 << endl;
+				sendMessage(fileDesc, buffer);
+
+
+
+
 		}
-		filePacket* p = (filePacket*)malloc(sizeof(filePacket));
-		//bzero(buffer, chunkSize);
-//		buffer = "x";
-//		strcpy(p->last, buffer);
+
+
 
 		char mes[1200] = "END";
-		strcpy(p->mes, mes);
-		sendMessage(fileDesc, p);
-		cout << "sent " << counter-1 << endl;
+		sendMessage(fileDesc, mes);
 
-		//free(p);
-
-		//delete(buffer);
 
 
 		fileStream.close();
-		cout << "Chunking complete! " << counter - 1 << " files created." << endl;
-		while(true);
+
+
 	}
 	else { cout << "Error opening file!" << endl; }
 }
 
-
-//http://www.coderslexicon.com/file-chunking-and-merging-in-c/
